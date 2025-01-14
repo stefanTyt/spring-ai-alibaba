@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.alibaba.cloud.ai</groupId>
+        <artifactId>spring-ai-alibaba</artifactId>
+        <version>${revision}</version>
+        <relativePath>../../../pom.xml</relativePath>
+    </parent>
+
+    <groupId>com.alibaba.cloud.ai.reader.tidb</groupId>
+    <artifactId>tidb-document-reader</artifactId>
+    <name>tidb-document-reader</name>
+    <description>TiDB reader for Spring AI Alibaba</description>
+    <packaging>jar</packaging>
+    <url>https://github.com/alibaba/spring-ai-alibaba</url>
+    <scm>
+        <url>https://github.com/alibaba/spring-ai-alibaba</url>
+        <connection>git://github.com/alibaba/spring-ai-alibaba.git</connection>
+        <developerConnection>git@github.com:alibaba/spring-ai-alibaba.git</developerConnection>
+    </scm>
+
+    <properties>
+        <java.version>17</java.version>
+        <mysql.version>8.0.33</mysql.version>
+    </properties>
+
+    <dependencies>
+        <!-- Spring AI Alibaba Core -->
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-core</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-autoconfigure</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- MySQL JDBC Driver (TiDB uses MySQL protocol) -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql.version}</version>
+        </dependency>
+
+        <!-- Spring JDBC -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Configuration Processor -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project> 
