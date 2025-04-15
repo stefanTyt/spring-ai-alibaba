@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,25 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph.serializer.std;
+
+import com.alibaba.cloud.ai.graph.serializer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.util.Optional;
 
-import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
-import com.alibaba.cloud.ai.graph.serializer.Serializer;
-
-@Slf4j
 public class ObjectInputWithMapper implements ObjectInput {
+
+	private static final Logger log = LoggerFactory.getLogger(ObjectInputWithMapper.class);
 
 	private final ObjectInput in;
 
 	private final SerializerMapper mapper;
 
-	public ObjectInputWithMapper(@NonNull ObjectInput in, @NonNull SerializerMapper mapper) {
+	public ObjectInputWithMapper(ObjectInput in, SerializerMapper mapper) {
 		this.in = in;
 		this.mapper = mapper;
 	}

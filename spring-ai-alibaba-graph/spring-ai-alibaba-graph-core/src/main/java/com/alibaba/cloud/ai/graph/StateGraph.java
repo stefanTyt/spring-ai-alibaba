@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph;
+
+import com.alibaba.cloud.ai.graph.action.AsyncEdgeAction;
+import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
+import com.alibaba.cloud.ai.graph.action.AsyncNodeActionWithConfig;
+import com.alibaba.cloud.ai.graph.checkpoint.config.SaverConfig;
+import com.alibaba.cloud.ai.graph.checkpoint.constant.SaverConstant;
+import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
+import com.alibaba.cloud.ai.graph.internal.edge.Edge;
+import com.alibaba.cloud.ai.graph.internal.edge.EdgeCondition;
+import com.alibaba.cloud.ai.graph.internal.edge.EdgeValue;
+import com.alibaba.cloud.ai.graph.internal.node.Node;
+import com.alibaba.cloud.ai.graph.internal.node.SubCompiledGraphNode;
+import com.alibaba.cloud.ai.graph.internal.node.SubStateGraphNode;
+import com.alibaba.cloud.ai.graph.serializer.StateSerializer;
+import com.alibaba.cloud.ai.graph.serializer.plain_text.PlainTextStateSerializer;
+import com.alibaba.cloud.ai.graph.serializer.plain_text.gson.GsonStateSerializer;
+import com.alibaba.cloud.ai.graph.serializer.plain_text.jackson.JacksonStateSerializer;
+import com.alibaba.cloud.ai.graph.state.AgentStateFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,31 +45,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-
-import com.alibaba.cloud.ai.graph.checkpoint.config.SaverConfig;
-import com.alibaba.cloud.ai.graph.checkpoint.constant.SaverConstant;
-import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
-import com.alibaba.cloud.ai.graph.serializer.plain_text.PlainTextStateSerializer;
-import com.alibaba.cloud.ai.graph.serializer.plain_text.gson.GsonStateSerializer;
-import com.alibaba.cloud.ai.graph.serializer.plain_text.jackson.JacksonStateSerializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import lombok.Getter;
-
-import com.alibaba.cloud.ai.graph.action.AsyncEdgeAction;
-import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
-import com.alibaba.cloud.ai.graph.action.AsyncNodeActionWithConfig;
-import com.alibaba.cloud.ai.graph.internal.edge.Edge;
-import com.alibaba.cloud.ai.graph.internal.edge.EdgeCondition;
-import com.alibaba.cloud.ai.graph.internal.edge.EdgeValue;
-import com.alibaba.cloud.ai.graph.internal.node.Node;
-import com.alibaba.cloud.ai.graph.internal.node.SubCompiledGraphNode;
-import com.alibaba.cloud.ai.graph.internal.node.SubStateGraphNode;
-import com.alibaba.cloud.ai.graph.serializer.StateSerializer;
-import com.alibaba.cloud.ai.graph.state.AgentStateFactory;
-
-import lombok.Setter;
 
 import static java.lang.String.format;
 
@@ -130,14 +125,18 @@ public class StateGraph {
 
 	final Edges edges = new Edges();
 
-	private EdgeValue entryPoint;
-
-	@Deprecated(forRemoval = true)
-	private String finishPoint;
-
-	@Getter
-	@Setter
 	private OverAllState overAllState;
+
+	private String name;
+
+	public OverAllState getOverAllState() {
+		return overAllState;
+	}
+
+	public StateGraph setOverAllState(OverAllState overAllState) {
+		this.overAllState = overAllState;
+		return this;
+	}
 
 	private final PlainTextStateSerializer stateSerializer;
 
@@ -171,6 +170,18 @@ public class StateGraph {
 
 	}
 
+	static class GsonSerializer2 extends GsonStateSerializer {
+
+		public GsonSerializer2(AgentStateFactory<OverAllState> stateFactory) {
+			super(stateFactory, new GsonBuilder().serializeNulls().create());
+		}
+
+		Gson getGson() {
+			return gson;
+		}
+
+	}
+
 	/**
 	 * Instantiates a new State graph.
 	 * @param overAllState the over all state
@@ -179,6 +190,12 @@ public class StateGraph {
 	public StateGraph(OverAllState overAllState, PlainTextStateSerializer plainTextStateSerializer) {
 		this.overAllState = overAllState;
 		this.stateSerializer = plainTextStateSerializer;
+	}
+
+	public StateGraph(String name, OverAllState overAllState) {
+		this.name = name;
+		this.overAllState = overAllState;
+		this.stateSerializer = new GsonSerializer();
 	}
 
 	/**
@@ -190,11 +207,26 @@ public class StateGraph {
 		this.stateSerializer = new GsonSerializer();
 	}
 
+	public StateGraph(String name, AgentStateFactory<OverAllState> factory) {
+		this.name = name;
+		this.overAllState = factory.apply(Map.of());
+		this.stateSerializer = new GsonSerializer2(factory);
+	}
+
+	public StateGraph(AgentStateFactory<OverAllState> factory) {
+		this.overAllState = factory.apply(Map.of());
+		this.stateSerializer = new GsonSerializer2(factory);
+	}
+
 	/**
 	 * Instantiates a new State graph.
 	 */
 	public StateGraph() {
 		this.stateSerializer = new GsonSerializer();
+	}
+
+	public String getName() {
+		return name;
 	}
 
 	/**
@@ -221,54 +253,6 @@ public class StateGraph {
 		return stateSerializer.stateFactory();
 	}
 
-	@Deprecated(forRemoval = true)
-	public EdgeValue getEntryPoint() {
-		return edges.edgeBySourceId(START).map(Edge::target).orElse(null);
-	}
-
-	@Deprecated(forRemoval = true)
-	public String getFinishPoint() {
-		return finishPoint;
-	}
-
-	/**
-	 * Sets the entry point of the graph.
-	 * @param entryPoint the nodeId of the graph's entry-point
-	 * @deprecated use addEdge(START, nodeId)
-	 */
-	@Deprecated(forRemoval = true)
-	public void setEntryPoint(String entryPoint) {
-		try {
-			addEdge(START, entryPoint);
-		}
-		catch (GraphStateException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Sets a conditional entry point of the graph.
-	 * @param condition the edge condition
-	 * @param mappings the edge mappings
-	 * @throws GraphStateException if the edge mappings is null or empty
-	 * @deprecated use addConditionalEdge(START, consition, mappings)
-	 */
-	@Deprecated(forRemoval = true)
-	public void setConditionalEntryPoint(AsyncEdgeAction condition, Map<String, String> mappings)
-			throws GraphStateException {
-		addConditionalEdges(START, condition, mappings);
-	}
-
-	/**
-	 * Sets the identifier of the node that represents the end of the graph execution.
-	 * @param finishPoint the identifier of the finish point node
-	 * @deprecated use use addEdge(nodeId, END)
-	 */
-	@Deprecated
-	public void setFinishPoint(String finishPoint) {
-		this.finishPoint = finishPoint;
-	}
-
 	/**
 	 * /** Adds a node to the graph.
 	 * @param id the identifier of the node
@@ -288,10 +272,24 @@ public class StateGraph {
 	 * exists
 	 */
 	public StateGraph addNode(String id, AsyncNodeActionWithConfig actionWithConfig) throws GraphStateException {
-		if (Objects.equals(id, END)) {
+		Node node = new Node(id, (config) -> actionWithConfig);
+		return addNode(id, node);
+	}
+
+	/**
+	 * @param id the identifier of the node
+	 * @param node the node to be added
+	 * @return this
+	 * @throws GraphStateException if the node identifier is invalid or the node already
+	 * exists
+	 */
+	public StateGraph addNode(String id, Node node) throws GraphStateException {
+		if (Objects.equals(node.id(), END)) {
 			throw Errors.invalidNodeIdentifier.exception(END);
 		}
-		Node node = new Node(id, (config) -> actionWithConfig);
+		if (!Objects.equals(node.id(), id)) {
+			throw Errors.invalidNodeIdentifier.exception(node.id(), id);
+		}
 
 		if (nodes.elements.contains(node)) {
 			throw Errors.duplicateNodeError.exception(id);
@@ -310,7 +308,7 @@ public class StateGraph {
 	 * @throws GraphStateException if the node identifier is invalid or the node already
 	 * exists
 	 */
-	public StateGraph addSubgraph(String id, CompiledGraph subGraph) throws GraphStateException {
+	public StateGraph addNode(String id, CompiledGraph subGraph) throws GraphStateException {
 		if (Objects.equals(id, END)) {
 			throw Errors.invalidNodeIdentifier.exception(END);
 		}
@@ -336,7 +334,7 @@ public class StateGraph {
 	 * @throws GraphStateException if the node identifier is invalid or the node already
 	 * exists
 	 */
-	public StateGraph addSubgraph(String id, StateGraph subGraph) throws GraphStateException {
+	public StateGraph addNode(String id, StateGraph subGraph) throws GraphStateException {
 		if (Objects.equals(id, END)) {
 			throw Errors.invalidNodeIdentifier.exception(END);
 		}
@@ -413,11 +411,6 @@ public class StateGraph {
 			throw Errors.edgeMappingIsEmpty.exception(sourceId);
 		}
 
-		// if (Objects.equals(sourceId, START)) {
-		// this.entryPoint = new EdgeValue<>(new EdgeCondition<>(condition, mappings));
-		// return this;
-		// }
-
 		var newEdge = new Edge(sourceId, new EdgeValue(new EdgeCondition(condition, mappings)));
 
 		if (edges.elements.contains(newEdge)) {
@@ -490,6 +483,13 @@ public class StateGraph {
 	public GraphRepresentation getGraph(GraphRepresentation.Type type, String title) {
 
 		String content = type.generator.generate(nodes, edges, title, true);
+
+		return new GraphRepresentation(type, content);
+	}
+
+	public GraphRepresentation getGraph(GraphRepresentation.Type type) {
+
+		String content = type.generator.generate(nodes, edges, name, true);
 
 		return new GraphRepresentation(type, content);
 	}

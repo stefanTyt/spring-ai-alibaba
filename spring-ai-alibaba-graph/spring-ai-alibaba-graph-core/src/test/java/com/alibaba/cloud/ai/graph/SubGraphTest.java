@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,36 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.logging.LogManager;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
+import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
+import com.alibaba.cloud.ai.graph.action.AsyncNodeActionWithConfig;
 import com.alibaba.cloud.ai.graph.checkpoint.config.SaverConfig;
 import com.alibaba.cloud.ai.graph.checkpoint.constant.SaverConstant;
-import com.alibaba.cloud.ai.graph.state.AppenderChannel;
-import lombok.extern.slf4j.Slf4j;
-import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
 import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
+import com.alibaba.cloud.ai.graph.state.AppenderChannel;
+import com.alibaba.cloud.ai.graph.state.strategy.AppendStrategy;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.LogManager;
 
 import static com.alibaba.cloud.ai.graph.StateGraph.END;
 import static com.alibaba.cloud.ai.graph.StateGraph.START;
 import static com.alibaba.cloud.ai.graph.action.AsyncEdgeAction.edge_async;
 import static com.alibaba.cloud.ai.graph.action.AsyncNodeAction.node_async;
-import static java.util.Collections.unmodifiableList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Slf4j
 public class SubGraphTest {
+
+	private static final Logger log = LoggerFactory.getLogger(SubGraphTest.class);
 
 	@BeforeAll
 	public static void initLogging() throws IOException {
@@ -88,57 +89,7 @@ public class SubGraphTest {
 			.registerKeyAndStrategy("b", (o, o2) -> o2)
 			.registerKeyAndStrategy("c", (o, o2) -> o2)
 			.registerKeyAndStrategy("steps", (o, o2) -> o2)
-			.registerKeyAndStrategy("messages", (oldValue, newValue) -> {
-				if (newValue == null) {
-					return oldValue;
-				}
-
-				boolean oldValueIsList = oldValue instanceof List<?>;
-
-				if (oldValueIsList && newValue instanceof AppenderChannel.RemoveIdentifier<?>) {
-					var result = new ArrayList<>((List<Object>) oldValue);
-					removeFromList(result, (AppenderChannel.RemoveIdentifier) newValue);
-					return unmodifiableList(result);
-				}
-
-				List<Object> list = null;
-				if (newValue instanceof List) {
-					list = new ArrayList<>((List<?>) newValue);
-				}
-				else if (newValue.getClass().isArray()) {
-					list = new ArrayList<>(Arrays.asList((Object[]) newValue));
-				}
-				else if (newValue instanceof Collection) {
-					list = new ArrayList<>((Collection<?>) newValue);
-				}
-
-				if (oldValueIsList) {
-					List<Object> oldList = (List<Object>) oldValue;
-					if (list != null) {
-						if (list.isEmpty()) {
-							return oldValue;
-						}
-						if (oldValueIsList) {
-							var result = evaluateRemoval((List<Object>) oldValue, list);
-							List<Object> mergedList = Stream
-								.concat(result.oldValues().stream(), result.newValues().stream())
-								.distinct()
-								.collect(Collectors.toList());
-							return mergedList;
-						}
-						oldList.addAll(list);
-					}
-					else {
-						oldList.add(newValue);
-					}
-					return oldList;
-				}
-				else {
-					ArrayList<Object> arrayResult = new ArrayList<>();
-					arrayResult.add(newValue);
-					return arrayResult;
-				}
-			});
+			.registerKeyAndStrategy("messages", new AppendStrategy());
 	}
 
 	@Test
@@ -151,7 +102,7 @@ public class SubGraphTest {
 			.addEdge("B2", END);
 
 		var workflowParent = new StateGraph(getOverAllState()).addNode("A", _makeNode("A"))
-			.addSubgraph("B", workflowChild)
+			.addNode("B", workflowChild)
 			.addNode("C", _makeNode("C"))
 			.addEdge(START, "A")
 			.addEdge("A", "B")
@@ -177,7 +128,7 @@ public class SubGraphTest {
 			.addEdge("B2", END);
 
 		var workflowParent = new StateGraph(getOverAllState()).addNode("A", _makeNode("A"))
-			.addSubgraph("B", workflowChild)
+			.addNode("B", workflowChild)
 			.addNode("C", _makeNode("C"))
 			.addConditionalEdges(START, edge_async(state -> "a"), Map.of("a", "A", "b", "B"))
 			.addEdge("A", "B")
@@ -214,7 +165,7 @@ public class SubGraphTest {
 			.addEdge("C", END);
 
 		var workflowParent = new StateGraph(getOverAllState()).addNode("A", _makeNode("A"))
-			.addSubgraph("B", workflowChild)
+			.addNode("B", workflowChild)
 			.addNode("C", _makeNode("C"))
 			.addConditionalEdges(START, edge_async(state -> "a"), Map.of("a", "A", "b", "B"))
 			.addEdge("A", "B")
@@ -245,6 +196,7 @@ public class SubGraphTest {
 		OverAllState overAllState = getOverAllState();
 		var workflowChild = new StateGraph().addNode("B1", _makeNode("B1"))
 			.addNode("B2", _makeNode("B2"))
+			// .addNode("B2", _makeNormalNode("B2"))
 			.addNode("C", _makeNode("subgraph(C)"))
 			.addEdge(START, "B1")
 			.addEdge("B1", "B2")
@@ -252,7 +204,7 @@ public class SubGraphTest {
 			.addEdge("C", END);
 
 		var workflowParent = new StateGraph(overAllState).addNode("A", _makeNode("A"))
-			.addSubgraph("B", workflowChild)
+			.addNode("B", workflowChild)
 			.addNode("C", _makeNode("C"))
 			.addConditionalEdges(START, edge_async(state -> "a"), Map.of("a", "A", "b", "B"))
 			.addEdge("A", "B")
@@ -339,7 +291,7 @@ public class SubGraphTest {
 			.addEdge("C", END);
 
 		var workflowParent = new StateGraph(overAllState).addNode("A", _makeNode("A"))
-			.addSubgraph("B", workflowChild)
+			.addNode("B", workflowChild)
 			.addNode("C", _makeNode("C"))
 			.addConditionalEdges(START, edge_async(state -> "a"), Map.of("a", "A", "b", "B"))
 			.addEdge("A", "B")
@@ -378,7 +330,7 @@ public class SubGraphTest {
 			.addEdge("C", END);
 
 		var workflowParent = new StateGraph(overAllState).addNode("A", _makeNode("A"))
-			.addSubgraph("B", workflowChild)
+			.addNode("B", workflowChild)
 			.addNode("C", _makeNode("C"))
 			.addNode("C1", _makeNode("C1"))
 			.addConditionalEdges(START, edge_async(state -> "a"), Map.of("a", "A", "b", "B"))
@@ -478,7 +430,7 @@ public class SubGraphTest {
 		var workflowParent = new StateGraph(overAllState).addNode("step_1", _makeNode("step1"))
 			.addNode("step_2", _makeNode("step2"))
 			.addNode("step_3", _makeNode("step3"))
-			.addSubgraph("subgraph", workflowChild)
+			.addNode("subgraph", workflowChild)
 			.addEdge(START, "step_1")
 			.addEdge("step_1", "step_2")
 			.addEdge("step_2", "subgraph")
@@ -496,6 +448,46 @@ public class SubGraphTest {
 		assertIterableEquals(List.of("step1", "step2", "child:step1", "child:step2", "child:step3", "step3"),
 				(List<String>) result.get().value("messages").get());
 
+	}
+
+	@Test
+	public void testOtherCreateSubgraph2() throws Exception {
+		SaverConfig saver = SaverConfig.builder().register(SaverConstant.MEMORY, new MemorySaver()).build();
+
+		var compileConfig = CompileConfig.builder().saverConfig(saver).build();
+		OverAllState overAllState = getOverAllState();
+		var workflowChild = new StateGraph().addNode("step_1", _makeNode("child:step1"))
+			.addNode("step_2", _makeNode("child:step2"))
+			.addNode("step_3", _makeNode("child:step3"))
+			.addEdge(START, "step_1")
+			.addEdge("step_1", "step_2")
+			.addEdge("step_2", "step_3")
+			.addEdge("step_3", END)
+		// .compile(compileConfig)
+		;
+
+		var workflowParent = new StateGraph(overAllState).addNode("step_1", _makeNode("step1"))
+			.addNode("step_2", _makeNode("step2"))
+			.addNode("step_3", _makeNode("step3"))
+			.addNode("subgraph", AsyncNodeActionWithConfig.node_async((t, config) -> {
+				// Reference the parent class Overallstate or create a new one
+				workflowChild.setOverAllState(t);
+				return workflowChild.compile().invoke(Map.of()).orElseThrow().data();
+			}))
+			.addEdge(START, "step_1")
+			.addEdge("step_1", "step_2")
+			.addEdge("step_2", "subgraph")
+			.addEdge("subgraph", "step_3")
+			.addEdge("step_3", END)
+			.compile(compileConfig);
+
+		var result = workflowParent.stream()
+			.stream()
+			.peek(n -> log.info("{}", n))
+			.reduce((a, b) -> b)
+			.map(NodeOutput::state);
+
+		assertTrue(result.isPresent());
 	}
 
 }

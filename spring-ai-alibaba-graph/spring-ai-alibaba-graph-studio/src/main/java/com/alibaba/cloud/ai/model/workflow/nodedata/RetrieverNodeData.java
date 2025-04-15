@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,27 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.model.workflow.nodedata;
 
 import com.alibaba.cloud.ai.model.Variable;
 import com.alibaba.cloud.ai.model.VariableSelector;
 import com.alibaba.cloud.ai.model.VariableType;
 import com.alibaba.cloud.ai.model.workflow.NodeData;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-import lombok.experimental.Accessors;
 
 import java.util.List;
 import java.util.Map;
 
-@EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
-@Accessors(chain = true)
-@NoArgsConstructor
-@Data
 public class RetrieverNodeData extends NodeData {
 
 	public static final List<Variable> INPUT_SCHEMA = List.of(new Variable("query", VariableType.STRING.value()));
@@ -46,6 +35,27 @@ public class RetrieverNodeData extends NodeData {
 	private List<RetrievalOptions> options;
 
 	private RerankOptions multipleRetrievalOptions;
+
+	public List<RetrievalOptions> getOptions() {
+		return options;
+	}
+
+	public RetrieverNodeData setOptions(List<RetrievalOptions> options) {
+		this.options = options;
+		return this;
+	}
+
+	public RerankOptions getMultipleRetrievalOptions() {
+		return multipleRetrievalOptions;
+	}
+
+	public RetrieverNodeData setMultipleRetrievalOptions(RerankOptions multipleRetrievalOptions) {
+		this.multipleRetrievalOptions = multipleRetrievalOptions;
+		return this;
+	}
+
+	public RetrieverNodeData() {
+	}
 
 	public RetrieverNodeData(List<VariableSelector> inputs, List<Variable> outputs) {
 		super(inputs, outputs);
@@ -84,8 +94,6 @@ public class RetrieverNodeData extends NodeData {
 
 	}
 
-	@Data
-	@Accessors(chain = true)
 	public static class RetrievalOptions {
 
 		public static final String DEFAULT_STORE_NAME = "default";
@@ -116,10 +124,80 @@ public class RetrieverNodeData extends NodeData {
 
 		private Map<String, Object> extraProperties;
 
+		public String getStoreName() {
+			return storeName;
+		}
+
+		public RetrievalOptions setStoreName(String storeName) {
+			this.storeName = storeName;
+			return this;
+		}
+
+		public String getEmbeddingModelName() {
+			return embeddingModelName;
+		}
+
+		public RetrievalOptions setEmbeddingModelName(String embeddingModelName) {
+			this.embeddingModelName = embeddingModelName;
+			return this;
+		}
+
+		public String getEmbeddingModelProvider() {
+			return embeddingModelProvider;
+		}
+
+		public RetrievalOptions setEmbeddingModelProvider(String embeddingModelProvider) {
+			this.embeddingModelProvider = embeddingModelProvider;
+			return this;
+		}
+
+		public String getRetrievalMode() {
+			return retrievalMode;
+		}
+
+		public RetrievalOptions setRetrievalMode(String retrievalMode) {
+			this.retrievalMode = retrievalMode;
+			return this;
+		}
+
+		public Integer getDenseTopK() {
+			return denseTopK;
+		}
+
+		public RetrievalOptions setDenseTopK(Integer denseTopK) {
+			this.denseTopK = denseTopK;
+			return this;
+		}
+
+		public Integer getSparseTopK() {
+			return sparseTopK;
+		}
+
+		public RetrievalOptions setSparseTopK(Integer sparseTopK) {
+			this.sparseTopK = sparseTopK;
+			return this;
+		}
+
+		public RerankOptions getRerankOptions() {
+			return rerankOptions;
+		}
+
+		public RetrievalOptions setRerankOptions(RerankOptions rerankOptions) {
+			this.rerankOptions = rerankOptions;
+			return this;
+		}
+
+		public Map<String, Object> getExtraProperties() {
+			return extraProperties;
+		}
+
+		public RetrievalOptions setExtraProperties(Map<String, Object> extraProperties) {
+			this.extraProperties = extraProperties;
+			return this;
+		}
+
 	}
 
-	@Data
-	@Accessors(chain = true)
 	public static class RerankOptions {
 
 		public static final String DEFAULT_RERANK_MODEL_NAME = "gte-rerank-hybrid";
@@ -139,6 +217,51 @@ public class RetrieverNodeData extends NodeData {
 		private Float rerankThreshold = DEFAULT_RERANK_THRESHOLD;
 
 		private Integer rerankTopK = DEFAULT_RERANK_TOP_K;
+
+		public Boolean getEnableRerank() {
+			return enableRerank;
+		}
+
+		public RerankOptions setEnableRerank(Boolean enableRerank) {
+			this.enableRerank = enableRerank;
+			return this;
+		}
+
+		public String getRerankModelName() {
+			return rerankModelName;
+		}
+
+		public RerankOptions setRerankModelName(String rerankModelName) {
+			this.rerankModelName = rerankModelName;
+			return this;
+		}
+
+		public String getRerankModelProvider() {
+			return rerankModelProvider;
+		}
+
+		public RerankOptions setRerankModelProvider(String rerankModelProvider) {
+			this.rerankModelProvider = rerankModelProvider;
+			return this;
+		}
+
+		public Float getRerankThreshold() {
+			return rerankThreshold;
+		}
+
+		public RerankOptions setRerankThreshold(Float rerankThreshold) {
+			this.rerankThreshold = rerankThreshold;
+			return this;
+		}
+
+		public Integer getRerankTopK() {
+			return rerankTopK;
+		}
+
+		public RerankOptions setRerankTopK(Integer rerankTopK) {
+			this.rerankTopK = rerankTopK;
+			return this;
+		}
 
 	}
 

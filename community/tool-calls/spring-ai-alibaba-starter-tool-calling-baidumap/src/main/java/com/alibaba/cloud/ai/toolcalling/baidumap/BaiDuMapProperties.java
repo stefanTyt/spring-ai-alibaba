@@ -15,27 +15,27 @@
  */
 package com.alibaba.cloud.ai.toolcalling.baidumap;
 
+import com.alibaba.cloud.ai.toolcalling.common.CommonToolCallProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import static com.alibaba.cloud.ai.toolcalling.baidumap.BaiDuMapProperties.BaiDuMapPrefix;
+import static com.alibaba.cloud.ai.toolcalling.common.CommonToolCallConstants.TOOL_CALLING_CONFIG_PREFIX;
 
 /**
  * @author Carbon
+ * @author vlsmb
  */
-@ConfigurationProperties(prefix = "spring.ai.alibaba.functioncalling.baidumap")
-public class BaiDuMapProperties {
+@ConfigurationProperties(prefix = BaiDuMapPrefix)
+public class BaiDuMapProperties extends CommonToolCallProperties {
 
-	// Official Document URL： https://lbs.baidu.com/faq/api?title=webapi/ROS2/prepare
-	private String webApiKey;
+	protected static final String BaiDuMapPrefix = TOOL_CALLING_CONFIG_PREFIX + ".baidu.map";
 
-	public BaiDuMapProperties(String webApiKey) {
-		this.webApiKey = webApiKey;
-	}
-
-	public String getWebApiKey() {
-		return webApiKey;
-	}
-
-	public void setWebApiKey(String webApiKey) {
-		this.webApiKey = webApiKey;
+	/**
+	 * Official Document URL：
+	 * <a href="https://lbs.baidu.com/faq/api?title=webapi/ROS2/prepare">...</a>
+	 */
+	public BaiDuMapProperties() {
+		super("https://api.map.baidu.com/");
 	}
 
 }

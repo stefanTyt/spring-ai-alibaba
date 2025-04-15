@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,36 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph;
-
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
 import com.alibaba.cloud.ai.graph.serializer.plain_text.PlainTextStateSerializer;
 import com.alibaba.cloud.ai.graph.state.AppenderChannel;
 import com.alibaba.cloud.ai.graph.state.RemoveByHash;
-import lombok.extern.slf4j.Slf4j;
+import com.alibaba.cloud.ai.graph.state.strategy.AppendStrategy;
+
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.alibaba.cloud.ai.graph.StateGraph.END;
 import static com.alibaba.cloud.ai.graph.StateGraph.START;
 import static com.alibaba.cloud.ai.graph.action.AsyncEdgeAction.edge_async;
 import static com.alibaba.cloud.ai.graph.action.AsyncNodeAction.node_async;
-import static java.util.Collections.unmodifiableList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Unit test for simple App.
- */
-@Slf4j
 public class StateGraphTest {
+
+	private static final Logger log = LoggerFactory.getLogger(StateGraphTest.class);
 
 	public static <T> List<Map.Entry<String, T>> sortMap(Map<String, T> map) {
 		return map.entrySet().stream().sorted(Map.Entry.comparingByKey()).collect(Collectors.toList());
@@ -254,57 +255,7 @@ public class StateGraphTest {
 
 	private static OverAllState getOverAllState() {
 		return new OverAllState().registerKeyAndStrategy("steps", (o, o2) -> o2)
-			.registerKeyAndStrategy("messages", (oldValue, newValue) -> {
-				if (newValue == null) {
-					return oldValue;
-				}
-
-				boolean oldValueIsList = oldValue instanceof List<?>;
-
-				if (oldValueIsList && newValue instanceof AppenderChannel.RemoveIdentifier<?>) {
-					var result = new ArrayList<>((List<Object>) oldValue);
-					removeFromList(result, (AppenderChannel.RemoveIdentifier) newValue);
-					return unmodifiableList(result);
-				}
-
-				List<Object> list = null;
-				if (newValue instanceof List) {
-					list = new ArrayList<>((List<?>) newValue);
-				}
-				else if (newValue.getClass().isArray()) {
-					list = new ArrayList<>(Arrays.asList((Object[]) newValue));
-				}
-				else if (newValue instanceof Collection) {
-					list = new ArrayList<>((Collection<?>) newValue);
-				}
-
-				if (oldValueIsList) {
-					List<Object> oldList = (List<Object>) oldValue;
-					if (list != null) {
-						if (list.isEmpty()) {
-							return oldValue;
-						}
-						if (oldValueIsList) {
-							var result = evaluateRemoval((List<Object>) oldValue, list);
-							List<Object> mergedList = Stream
-								.concat(result.oldValues().stream(), result.newValues().stream())
-								.distinct()
-								.collect(Collectors.toList());
-							return mergedList;
-						}
-						oldList.addAll(list);
-					}
-					else {
-						oldList.add(newValue);
-					}
-					return oldList;
-				}
-				else {
-					ArrayList<Object> arrayResult = new ArrayList<>();
-					arrayResult.add(newValue);
-					return arrayResult;
-				}
-			});
+			.registerKeyAndStrategy("messages", new AppendStrategy());
 	}
 
 	@Test
@@ -335,7 +286,7 @@ public class StateGraphTest {
 		var workflowParent = new StateGraph(overAllState).addNode("step_1", step1)
 			.addNode("step_2", step2)
 			.addNode("step_3", step3)
-			.addSubgraph("subgraph", workflowChild)
+			.addNode("subgraph", workflowChild)
 			.addEdge(START, "step_1")
 			.addEdge("step_1", "step_2")
 			.addEdge("step_2", "subgraph")

@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph.serializer.plain_text;
+
+import com.alibaba.cloud.ai.graph.OverAllState;
+import com.alibaba.cloud.ai.graph.serializer.StateSerializer;
+import com.alibaba.cloud.ai.graph.state.AgentStateFactory;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -24,18 +27,10 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Reader;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-
-import com.alibaba.cloud.ai.graph.OverAllState;
-import lombok.NonNull;
-import com.alibaba.cloud.ai.graph.serializer.StateSerializer;
-import com.alibaba.cloud.ai.graph.state.AgentState;
-import com.alibaba.cloud.ai.graph.state.AgentStateFactory;
 
 public abstract class PlainTextStateSerializer extends StateSerializer<OverAllState> {
 
-	protected PlainTextStateSerializer(@NonNull AgentStateFactory<OverAllState> stateFactory) {
+	protected PlainTextStateSerializer(AgentStateFactory<OverAllState> stateFactory) {
 		super(stateFactory);
 	}
 

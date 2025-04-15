@@ -1,5 +1,4 @@
-#
-# Copyright 2024-2026 the original author or authors.
+# Copyright 2024-2025 the original author or authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
 ##@ Java
 
@@ -21,10 +19,11 @@ test: ## Run tests
 	@$(LOG_TARGET)
 	mvn test -pl !spring-ai-alibaba-studio,!spring-ai-alibaba-graph
 
+# Separate build and test to speed up execution
 .PHONY: build
 build: ## Build the project
 	@$(LOG_TARGET)
-	mvn -B package --file pom.xml
+	mvn -B package --file pom.xml -DskipTests=true
 
 .PHONY: format-fix
 format-fix: ## Format the code

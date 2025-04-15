@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,23 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.service.dsl.nodes;
 
 import com.alibaba.cloud.ai.model.workflow.NodeType;
-import com.alibaba.cloud.ai.model.workflow.nodedata.AnswerNodeData;
 import com.alibaba.cloud.ai.model.workflow.nodedata.VariableAggregatorNodeData;
 import com.alibaba.cloud.ai.service.dsl.AbstractNodeDataConverter;
 import com.alibaba.cloud.ai.service.dsl.DSLDialectType;
-import com.alibaba.cloud.ai.service.dsl.NodeDataConverter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.SneakyThrows;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ReflectionUtils;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -73,11 +67,8 @@ public class VariableAggregatorNodeDataConverter extends AbstractNodeDataConvert
 				catch (JsonProcessingException e) {
 					throw new RuntimeException("Failed to parse JSON", e);
 				}
-				return VariableAggregatorNodeData.builder()
-					.variables((List<List<String>>) data.get("variables"))
-					.outputType((String) data.get("output_type"))
-					.advancedSettings(advancedSettings)
-					.build();
+				return new VariableAggregatorNodeData(null, null, (List<List<String>>) data.get("variables"),
+						(String) data.get("output_type"), advancedSettings);
 			}
 
 			@Override

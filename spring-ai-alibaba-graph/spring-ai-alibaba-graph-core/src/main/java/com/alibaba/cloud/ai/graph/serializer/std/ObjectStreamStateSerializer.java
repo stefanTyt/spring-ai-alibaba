@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph.serializer.std;
+
+import com.alibaba.cloud.ai.graph.serializer.StateSerializer;
+import com.alibaba.cloud.ai.graph.state.AgentState;
+import com.alibaba.cloud.ai.graph.state.AgentStateFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -25,13 +30,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
-import com.alibaba.cloud.ai.graph.serializer.StateSerializer;
-import com.alibaba.cloud.ai.graph.state.AgentState;
-import com.alibaba.cloud.ai.graph.state.AgentStateFactory;
-
-@Slf4j
 public class ObjectStreamStateSerializer<State extends AgentState> extends StateSerializer<State> {
+
+	private static final Logger log = LoggerFactory.getLogger(ObjectStreamStateSerializer.class);
 
 	static class ListSerializer implements NullableObjectSerializer<List<Object>> {
 

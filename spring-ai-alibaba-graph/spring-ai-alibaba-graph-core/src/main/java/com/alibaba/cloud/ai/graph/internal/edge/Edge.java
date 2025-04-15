@@ -1,11 +1,11 @@
 /*
- * Copyright 2024-2026 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph.internal.edge;
+
+import com.alibaba.cloud.ai.graph.GraphStateException;
+import com.alibaba.cloud.ai.graph.StateGraph;
+import com.alibaba.cloud.ai.graph.internal.node.Node;
 
 import java.util.List;
 import java.util.Map;
@@ -23,14 +26,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import lombok.NonNull;
-import com.alibaba.cloud.ai.graph.GraphStateException;
-import com.alibaba.cloud.ai.graph.StateGraph;
-import com.alibaba.cloud.ai.graph.internal.node.Node;
-import com.alibaba.cloud.ai.graph.state.AgentState;
-
-import static java.lang.String.format;
 import static com.alibaba.cloud.ai.graph.StateGraph.START;
+import static java.lang.String.format;
 
 /**
  * Represents an edge in a graph with a source ID and a target value.
@@ -75,7 +72,7 @@ public record Edge(String sourceId, List<EdgeValue> targets) {
 
 	}
 
-	public void validate(@NonNull StateGraph.Nodes nodes) throws GraphStateException {
+	public void validate(StateGraph.Nodes nodes) throws GraphStateException {
 		if (!Objects.equals(sourceId(), START) && !nodes.anyMatchById(sourceId())) {
 			throw StateGraph.Errors.missingNodeReferencedByEdge.exception(sourceId());
 		}
