@@ -16,17 +16,17 @@
 package com.alibaba.cloud.ai.dashscope.chat;
 
 import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.Assumptions;
+import reactor.core.publisher.Flux;
+
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import reactor.core.publisher.Flux;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,11 +65,15 @@ class DashScopeChatIT {
 	@Test
 	void testBasicChat() {
 		// Create real API client with API key from environment
-		DashScopeApi realApi = new DashScopeApi(apiKey);
+		DashScopeApi realApi = DashScopeApi.builder().apiKey(apiKey).build();
+		;
 
 		// Create chat model with default options
 		DashScopeChatOptions options = DashScopeChatOptions.builder().withModel(TEST_MODEL).build();
-		DashScopeChatModel chatModel = new DashScopeChatModel(realApi, options);
+		DashScopeChatModel chatModel = DashScopeChatModel.builder()
+			.dashScopeApi(realApi)
+			.defaultOptions(options)
+			.build();
 
 		// Create prompt with user message
 		UserMessage message = new UserMessage(TEST_PROMPT);
@@ -90,11 +94,16 @@ class DashScopeChatIT {
 	@Test
 	void testStreamChat() {
 		// Create real API client with API key from environment
-		DashScopeApi realApi = new DashScopeApi(apiKey);
+		DashScopeApi realApi = DashScopeApi.builder().apiKey(apiKey).build();
+		;
 
 		// Create chat model with default options
 		DashScopeChatOptions options = DashScopeChatOptions.builder().withModel(TEST_MODEL).build();
-		DashScopeChatModel chatModel = new DashScopeChatModel(realApi, options);
+		DashScopeChatModel chatModel = DashScopeChatModel.builder()
+			.dashScopeApi(realApi)
+			.defaultOptions(options)
+			.build();
+		;
 
 		// Create prompt with user message
 		UserMessage message = new UserMessage(TEST_PROMPT);

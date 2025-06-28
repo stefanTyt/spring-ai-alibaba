@@ -35,7 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Test cases for DashScopeCloudStore.
@@ -102,14 +103,14 @@ class DashScopeCloudStoreTests {
 	}
 
 	@Test
-    void testDeleteDocumentsWithNonExistentIndex() {
-        // Mock non-existent index scenario
-        when(dashScopeApi.getPipelineIdByName(TEST_INDEX_NAME)).thenReturn(null);
+	void testDeleteDocumentsWithNonExistentIndex() {
+		// Mock non-existent index scenario
+		when(dashScopeApi.getPipelineIdByName(TEST_INDEX_NAME)).thenReturn(null);
 
-        // Test document deletion
-        List<String> ids = Arrays.asList("id1", "id2");
-        assertThrows(DashScopeException.class, () -> cloudStore.delete(ids));
-    }
+		// Test document deletion
+		List<String> ids = Arrays.asList("id1", "id2");
+		assertThrows(DashScopeException.class, () -> cloudStore.delete(ids));
+	}
 
 	@Test
 	void testDeleteDocumentsSuccessfully() {
@@ -124,13 +125,13 @@ class DashScopeCloudStoreTests {
 	}
 
 	@Test
-    void testSimilaritySearchWithNonExistentIndex() {
-        // Mock non-existent index scenario
-        when(dashScopeApi.getPipelineIdByName(TEST_INDEX_NAME)).thenReturn(null);
+	void testSimilaritySearchWithNonExistentIndex() {
+		// Mock non-existent index scenario
+		when(dashScopeApi.getPipelineIdByName(TEST_INDEX_NAME)).thenReturn(null);
 
-        // Test similarity search
-        assertThrows(DashScopeException.class, () -> cloudStore.similaritySearch(TEST_QUERY));
-    }
+		// Test similarity search
+		assertThrows(DashScopeException.class, () -> cloudStore.similaritySearch(TEST_QUERY));
+	}
 
 	@Test
 	void testSimilaritySearchSuccessfully() {

@@ -13,21 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.alibaba.cloud.ai.graph.node.code;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import com.alibaba.cloud.ai.graph.node.code.entity.CodeBlock;
 import com.alibaba.cloud.ai.graph.node.code.entity.CodeExecutionConfig;
 import com.alibaba.cloud.ai.graph.node.code.entity.CodeExecutionResult;
+import com.alibaba.cloud.ai.graph.utils.CodeUtils;
 import com.alibaba.cloud.ai.graph.utils.FileUtils;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.exec.CommandLine;
@@ -37,6 +28,15 @@ import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author HeYQ
@@ -56,15 +56,8 @@ public class LocalCommandlineCodeExecutor implements CodeExecutor {
 			String language = codeBlock.language();
 			String code = codeBlock.code();
 			logger.info("\n>>>>>>>> EXECUTING CODE BLOCK {} (inferred language is {})...", i + 1, language);
-
-			if (Set.of("bash", "shell", "sh", "python").contains(language.toLowerCase())) {
-				result = executeCode(language, code, codeExecutionConfig);
-			}
-			else {
-				// the language is not supported, then return an error message.
-				result = new CodeExecutionResult(1, "unknown language " + language);
-			}
-
+			// "bash", "shell", "sh", "python"
+			result = executeCode(language, code, codeExecutionConfig);
 			allLogs.append("\n").append(result.logs());
 			if (result.exitCode() != 0) {
 				return new CodeExecutionResult(result.exitCode(), allLogs.toString());
@@ -85,65 +78,97 @@ public class LocalCommandlineCodeExecutor implements CodeExecutor {
 		}
 		String workDir = config.getWorkDir();
 		String codeHash = DigestUtils.md5Hex(code);
-		String fileExt = language.startsWith("python") ? "py" : language;
+		String fileExt = CodeUtils.getFileExtForLanguage(language);
 		String filename = String.format("tmp_code_%s.%s", codeHash, fileExt);
 
 		// write the code string to a file specified by the filename.
 		FileUtils.writeCodeToFile(workDir, filename, code);
 
-		CodeExecutionResult executionResult = executeCodeLocally(language, workDir, filename, config.getTimeout());
+		// Copy required JAR files to workDir if language is Java
+		if ("java".equals(language)) {
+			FileUtils.copyResourceJarToWorkDir(workDir);
+		}
+
+		CodeExecutionResult executionResult = executeCodeLocally(language, workDir, filename, config);
 
 		FileUtils.deleteFile(workDir, filename);
+
+		// Delete JAR files if language is Java
+		if ("java".equals(language)) {
+			FileUtils.deleteResourceJarFromWorkDir(workDir);
+		}
 		return executionResult;
 	}
 
-	private CodeExecutionResult executeCodeLocally(String language, String workDir, String filename, int timeout)
-			throws Exception {
-		// set up the command based on language
-		String executable = getExecutableForLanguage(language);
+	private CodeExecutionResult executeCodeLocally(String language, String workDir, String filename,
+			CodeExecutionConfig config) throws Exception {
+		// Set up command line based on language
+		String executable = CodeUtils.getExecutableForLanguage(language);
 		CommandLine commandLine = new CommandLine(executable);
-		commandLine.addArgument(filename);
 
-		// set up the execution environment
+		if ("java".equals(language)) {
+			commandLine.addArgument("-cp");
+			StringBuilder classPathBuilder = new StringBuilder();
+			classPathBuilder.append(".").append(File.pathSeparator).append(workDir);
+
+			// Add all JAR files in workDir to classpath
+			try {
+				Path workDirPath = Path.of(workDir);
+				if (Files.exists(workDirPath)) {
+					try (var stream = Files.walk(workDirPath)) {
+						stream.filter(path -> path.toString().endsWith(".jar")).forEach(jarPath -> {
+							classPathBuilder.append(File.pathSeparator).append(jarPath.toString());
+						});
+					}
+				}
+			}
+			catch (IOException e) {
+				logger.warn("Failed to scan JAR files in work directory", e);
+			}
+
+			if (config.getClassPath() != null && !config.getClassPath().isEmpty()) {
+				classPathBuilder.append(File.pathSeparator).append(config.getClassPath());
+			}
+
+			String classPath = classPathBuilder.toString();
+			commandLine.addArgument(classPath).addArgument(filename);
+		}
+		else {
+			commandLine.addArgument(filename);
+		}
+
+		// Configure executor
 		DefaultExecutor executor = new DefaultExecutor();
 		executor.setWorkingDirectory(new File(workDir));
 		executor.setExitValue(0);
 
-		// set up the streams for the output of the subprocess
+		// Set up stream handling
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 		ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
-		PumpStreamHandler streamHandler = new PumpStreamHandler(outputStream, errorStream);
-		executor.setStreamHandler(streamHandler);
+		executor.setStreamHandler(new PumpStreamHandler(outputStream, errorStream));
 
-		// set up a watchdog to terminate the process if it exceeds the timeout
-		ExecuteWatchdog watchdog = new ExecuteWatchdog(TimeUnit.SECONDS.toMillis(timeout));
-		executor.setWatchdog(watchdog);
+		// Set timeout
+		executor.setWatchdog(new ExecuteWatchdog(TimeUnit.SECONDS.toMillis(config.getTimeout())));
 
 		try {
-			// execute the command
 			executor.execute(commandLine);
-			// process completed before the watchdog terminated it
-			String output = outputStream.toString();
-			return new CodeExecutionResult(0, output.trim());
+			return new CodeExecutionResult(0, outputStream.toString().trim());
 		}
 		catch (ExecuteException e) {
-			// process finished with an exit value (possibly non-zero)
-			String errorOutput = errorStream.toString().replace(Path.of(workDir).toAbsolutePath() + File.separator, "");
-
-			return new CodeExecutionResult(e.getExitValue(), errorOutput.trim());
+			String errorOutput = errorStream.toString()
+				.replace(Path.of(workDir).toAbsolutePath() + File.separator, "")
+				.trim();
+			return new CodeExecutionResult(e.getExitValue(), errorOutput);
 		}
 		catch (IOException e) {
-			// returns a special result if the process was killed by the watchdog
-			throw new Exception("Error executing code.", e);
+			throw new Exception("Failed to execute code", e);
 		}
-	}
-
-	private String getExecutableForLanguage(String language) throws Exception {
-		return switch (language) {
-			case "python" -> language;
-			case "shell", "bash", "sh", "powershell" -> "sh";
-			default -> throw new Exception("Language not recognized in code execution:" + language);
-		};
+		finally {
+			// Cleanup Java class files
+			if ("java".equals(language)) {
+				FileUtils.deleteFile(workDir, filename.replace(".java", ".class"));
+			}
+		}
 	}
 
 }

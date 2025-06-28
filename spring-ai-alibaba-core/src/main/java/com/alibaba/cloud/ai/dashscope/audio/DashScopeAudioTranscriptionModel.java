@@ -15,13 +15,18 @@
  */
 package com.alibaba.cloud.ai.dashscope.audio;
 
+import com.alibaba.cloud.ai.dashscope.common.DashScopeApiConstants;
 import com.alibaba.cloud.ai.dashscope.common.DashScopeException;
 import com.alibaba.cloud.ai.dashscope.protocol.DashScopeWebSocketClient;
-import org.springframework.ai.audio.transcription.*;
 import com.alibaba.cloud.ai.dashscope.api.DashScopeAudioTranscriptionApi;
 import com.alibaba.cloud.ai.dashscope.audio.transcription.AudioTranscriptionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.audio.transcription.AudioTranscription;
+import org.springframework.ai.audio.transcription.AudioTranscriptionOptions;
+import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
+import org.springframework.ai.audio.transcription.AudioTranscriptionResponse;
+import org.springframework.ai.audio.transcription.AudioTranscriptionResponseMetadata;
 import org.springframework.ai.model.ModelOptionsUtils;
 import org.springframework.ai.retry.RetryUtils;
 import org.springframework.core.io.Resource;
@@ -42,20 +47,6 @@ import java.time.Duration;
 public class DashScopeAudioTranscriptionModel implements AudioTranscriptionModel {
 
 	private static final Logger logger = LoggerFactory.getLogger(DashScopeAudioTranscriptionModel.class);
-
-	public static final String REQUEST_ID = "request_id";
-
-	public static final String TASK_ID = "task_id";
-
-	public static final String STATUS_CODE = "status_code";
-
-	public static final String CODE = "code";
-
-	public static final String USAGE = "usage";
-
-	public static final String OUTPUT = "output";
-
-	public static final String MESSAGE = "message";
 
 	private final DashScopeAudioTranscriptionApi api;
 
@@ -243,21 +234,21 @@ public class DashScopeAudioTranscriptionModel implements AudioTranscriptionModel
 
 		AudioTranscriptionResponseMetadata responseMetadata = new AudioTranscriptionResponseMetadata();
 		if (apiResponse.statusCode() != null) {
-			responseMetadata.put(STATUS_CODE, apiResponse.statusCode());
+			responseMetadata.put(DashScopeApiConstants.STATUS_CODE, apiResponse.statusCode());
 		}
 		if (apiResponse.requestId() != null) {
-			responseMetadata.put(REQUEST_ID, apiResponse.requestId());
+			responseMetadata.put(DashScopeApiConstants.REQUEST_ID, apiResponse.requestId());
 		}
 		if (apiResponse.code() != null) {
-			responseMetadata.put(CODE, apiResponse.code());
+			responseMetadata.put(DashScopeApiConstants.CODE, apiResponse.code());
 		}
 		if (apiResponse.message() != null) {
-			responseMetadata.put(MESSAGE, apiResponse.message());
+			responseMetadata.put(DashScopeApiConstants.MESSAGE, apiResponse.message());
 		}
 		if (apiResponse.usage() != null) {
-			responseMetadata.put(USAGE, apiResponse.usage());
+			responseMetadata.put(DashScopeApiConstants.USAGE, apiResponse.usage());
 		}
-		responseMetadata.put(OUTPUT, apiOutput);
+		responseMetadata.put(DashScopeApiConstants.OUTPUT, apiOutput);
 
 		return new AudioTranscriptionResponse(result, responseMetadata);
 	}
@@ -277,10 +268,10 @@ public class DashScopeAudioTranscriptionModel implements AudioTranscriptionModel
 
 		AudioTranscriptionResponseMetadata responseMetadata = new AudioTranscriptionResponseMetadata();
 
-		responseMetadata.put(TASK_ID, taskId);
-		responseMetadata.put(OUTPUT, apiOutput);
+		responseMetadata.put(DashScopeApiConstants.TASK_ID, taskId);
+		responseMetadata.put(DashScopeApiConstants.OUTPUT, apiOutput);
 		if (apiPayload.usage() != null) {
-			responseMetadata.put(USAGE, apiPayload.usage());
+			responseMetadata.put(DashScopeApiConstants.USAGE, apiPayload.usage());
 		}
 
 		return new AudioTranscriptionResponse(result, responseMetadata);

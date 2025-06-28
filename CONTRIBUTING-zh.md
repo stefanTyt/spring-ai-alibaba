@@ -1,14 +1,14 @@
 ## 如何贡献
 
-## 感谢你为 Spring Ai Alibaba 贡献！
+## 感谢你为 Spring AI Alibaba 贡献！
 
-Spring Ai Alibaba 从开源建设以来，受到了很多社区同学的关注。社区的每一个 Issue ，每一个 PR，都是对整个项目的帮助，都在为建设更好用的 Spring Ai 添砖加瓦。
+Spring AI Alibaba 从开源建设以来，受到了很多社区同学的关注。社区的每一个 Issue ，每一个 PR，都是对整个项目的帮助，都在为建设更好用的 Spring AI 添砖加瓦。
 
 我们真心地感谢为这个项目提出过 Issue 和 PR 的开发者。我们希望有更多社区的开发者加入进来，一起把项目做好。
 
 ## 如何贡献
 
-在贡献代码之前，请您稍微花一些时间了解为 Spring Ai Alibaba 贡献代码的流程。
+在贡献代码之前，请您稍微花一些时间了解为 Spring AI Alibaba 贡献代码的流程。
 
 ### 贡献什么？
 
@@ -41,13 +41,30 @@ fork 出来的代码后，原仓库 main 分支可能出现了新的提交，这
 - 在你本机的 spring-ai-alibaba 目录下，执行 `git checkout main` 切换到 master 分支。
 - 在你本机的 spring-ai-alibaba 目录下，执行 `git rebase upstream/main` rebase 最新代码。
 
-### 配置 Spring Ai 标准的代码格式
+### 配置 Spring AI 标准的代码格式
 
-Spring Ai Alibaba 作为 Spring Ai 的实现之一，在代码规范方面直接沿用了 Spring Ai 项目规范，在正式开始之前请参考相关代码格式规范说明，提交代码前需要先配置好代码格式规范。
+Spring AI Alibaba 作为 Spring AI 的实现之一，在代码规范方面直接沿用了 Spring AI 项目规范，在正式开始之前请参考相关代码格式规范说明，提交代码前需要先配置好代码格式规范。
 
-### 开发、提交、Push
+### 开发
 
 开发自己的功能，**开发完毕后建议使用 `mvn clean package` 命令确保能修改后的代码能在本地编译通过。执行该命令的同时还能以 spring 的方式自动格式化代码**。然后再提交代码，提交代码之前请注意创建一个新的有关本特性的分支，用该分支进行代码提交。
+
+### 本地CI
+
+本地 boe 环境开发完成后，强烈建议在提交 PR 之前执行项目`tools\make`提供的 `make` 命令进行本地持续集成（CI）检查，以确保代码符合项目的标准和规范。如果对于本地CI有任何疑问，可以在控制台输入 `make help` 了解具体信息。
+
+### 本地Checkstyle
+
+为了减少一些不必要的代码风格问题，Spring AI Alibaba 提供了本地 Checkstyle 检查功能。可以在项目根目录下执行 `mvn checkstyle:check` 命令来检查代码风格是否符合规范。
+
+### 删除未使用的导入
+
+为了确保代码的整洁，请删除 Java 文件中未使用的导入。可以通过执行 `mvn spotless:apply` 命令来自动删除未使用的导入。
+
+### 提交最新代码
+
+在编码完成之后，需要基于 pr 规范`[lint-pr-title.yml](.github/workflows/lint-pr-title.yml)`对提交信息进行 format & check，确保提交信息符合规范。
+Commit 规范: git commit -m "类型(模块): 空格 符合规范的提交信息",例如 `feat(docs): contribute-zh 更新` 
 
 ### Merge 最新代码
 
@@ -56,4 +73,4 @@ Spring Ai Alibaba 作为 Spring Ai 的实现之一，在代码规范方面直接
 
 ### 提交 PR
 
-提交 PR，根据 `Pull request template` 写明修改点和实现的功能，等待 code review 和 合并，成为 Spring Ai Alibaba Contributor，为更好用的 Spring Ai Alibaba 做出贡献。
+提交 PR，根据 `Pull request template` 写明修改点和实现的功能，等待 code review 和 合并，成为 Spring AI Alibaba Contributor，为更好用的 Spring AI Alibaba 做出贡献。

@@ -15,140 +15,106 @@
  */
 package com.alibaba.cloud.ai.graph;
 
+import com.alibaba.cloud.ai.graph.action.AsyncCommandAction;
 import com.alibaba.cloud.ai.graph.action.AsyncEdgeAction;
 import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
 import com.alibaba.cloud.ai.graph.action.AsyncNodeActionWithConfig;
 import com.alibaba.cloud.ai.graph.checkpoint.config.SaverConfig;
 import com.alibaba.cloud.ai.graph.checkpoint.constant.SaverConstant;
 import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
+
+import com.alibaba.cloud.ai.graph.exception.Errors;
+import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.alibaba.cloud.ai.graph.internal.edge.Edge;
 import com.alibaba.cloud.ai.graph.internal.edge.EdgeCondition;
 import com.alibaba.cloud.ai.graph.internal.edge.EdgeValue;
+import com.alibaba.cloud.ai.graph.internal.node.CommandNode;
 import com.alibaba.cloud.ai.graph.internal.node.Node;
 import com.alibaba.cloud.ai.graph.internal.node.SubCompiledGraphNode;
 import com.alibaba.cloud.ai.graph.internal.node.SubStateGraphNode;
 import com.alibaba.cloud.ai.graph.serializer.StateSerializer;
 import com.alibaba.cloud.ai.graph.serializer.plain_text.PlainTextStateSerializer;
-import com.alibaba.cloud.ai.graph.serializer.plain_text.gson.GsonStateSerializer;
 import com.alibaba.cloud.ai.graph.serializer.plain_text.jackson.JacksonStateSerializer;
 import com.alibaba.cloud.ai.graph.state.AgentStateFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-
-import static java.lang.String.format;
+import java.util.LinkedHashSet;
 
 /**
  * Represents a state graph with nodes and edges.
- *
  */
 public class StateGraph {
 
 	/**
-	 * Enum representing various error messages related to graph state.
+	 * Constant representing the END of the graph.
 	 */
-	public enum Errors {
-
-		invalidNodeIdentifier("END is not a valid node id!"),
-		invalidEdgeIdentifier("END is not a valid edge sourceId!"),
-		duplicateNodeError("node with id: %s already exist!"), duplicateEdgeError("edge with id: %s already exist!"),
-		duplicateConditionalEdgeError("conditional edge from '%s' already exist!"),
-		edgeMappingIsEmpty("edge mapping is empty!"), missingEntryPoint("missing Entry Point"),
-		entryPointNotExist("entryPoint: %s doesn't exist!"), finishPointNotExist("finishPoint: %s doesn't exist!"),
-		missingNodeReferencedByEdge("edge sourceId '%s' refers to undefined node!"),
-		missingNodeInEdgeMapping("edge mapping for sourceId: %s contains a not existent nodeId %s!"),
-		invalidEdgeTarget("edge sourceId: %s has an initialized target value!"),
-		duplicateEdgeTargetError("edge [%s] has duplicate targets %s!"),
-		unsupportedConditionalEdgeOnParallelNode(
-				"parallel node doesn't support conditional branch, but on [%s] a conditional branch on %s have been found!"),
-		illegalMultipleTargetsOnParallelNode("parallel node [%s] must have only one target, but %s have been found!"),
-		interruptionNodeNotExist("node '%s' configured as interruption doesn't exist!");
-
-		private final String errorMessage;
-
-		Errors(String errorMessage) {
-			this.errorMessage = errorMessage;
-		}
-
-		/**
-		 * Creates a new GraphStateException with the formatted error message.
-		 * @param args the arguments to format the error message
-		 * @return a new GraphStateException
-		 */
-		public GraphStateException exception(Object... args) {
-			return new GraphStateException(format(errorMessage, (Object[]) args));
-		}
-
-	}
+	public static final String END = "__END__";
 
 	/**
-	 * Enum representing various error messages related to graph runner.
+	 * Constant representing the START of the graph.
 	 */
-	enum RunnableErrors {
+	public static final String START = "__START__";
 
-		missingNodeInEdgeMapping("cannot find edge mapping for id: '%s' in conditional edge with sourceId: '%s' "),
-		missingNode("node with id: '%s' doesn't exist!"), missingEdge("edge with sourceId: '%s' doesn't exist!"),
-		executionError("%s");
+	/**
+	 * Constant representing the ERROR of the graph.
+	 */
+	public static final String ERROR = "__ERROR__";
 
-		private final String errorMessage;
-
-		RunnableErrors(String errorMessage) {
-			this.errorMessage = errorMessage;
-		}
-
-		/**
-		 * Creates a new GraphRunnerException with the formatted error message.
-		 * @param args the arguments to format the error message
-		 * @return a new GraphRunnerException
-		 */
-		GraphRunnerException exception(String... args) {
-			return new GraphRunnerException(format(errorMessage, (Object[]) args));
-		}
-
-	}
-
-	public static String END = "__END__";
-
-	public static String START = "__START__";
-
+	/**
+	 * Collection of nodes in the graph.
+	 */
 	final Nodes nodes = new Nodes();
 
+	/**
+	 * Collection of edges in the graph.
+	 */
 	final Edges edges = new Edges();
 
-	private OverAllState overAllState;
+	/**
+	 * Factory for creating overall state instances.
+	 */
+	private OverAllStateFactory overAllStateFactory;
 
+	/**
+	 * Factory for providing key strategies.
+	 */
+	private KeyStrategyFactory keyStrategyFactory;
+
+	/**
+	 * Name of the graph.
+	 */
 	private String name;
 
-	public OverAllState getOverAllState() {
-		return overAllState;
-	}
-
-	public StateGraph setOverAllState(OverAllState overAllState) {
-		this.overAllState = overAllState;
-		return this;
-	}
-
+	/**
+	 * Serializer for the state.
+	 */
 	private final PlainTextStateSerializer stateSerializer;
 
 	/**
-	 * The type Jackson serializer.
+	 * Jackson-based serializer for state.
 	 */
 	static class JacksonSerializer extends JacksonStateSerializer {
 
+		/**
+		 * Instantiates a new Jackson serializer.
+		 */
 		public JacksonSerializer() {
 			super(OverAllState::new);
 		}
 
+		/**
+		 * Gets object mapper.
+		 * @return the object mapper
+		 */
 		ObjectMapper getObjectMapper() {
 			return objectMapper;
 		}
@@ -156,97 +122,121 @@ public class StateGraph {
 	}
 
 	/**
-	 * The type Gson serializer.
+	 * Constructs a StateGraph with the specified name, key strategy factory, and state
+	 * serializer.
+	 * @param name the name of the graph
+	 * @param keyStrategyFactory the factory for providing key strategies
+	 * @param stateSerializer the plain text state serializer to use
 	 */
-	static class GsonSerializer extends GsonStateSerializer {
-
-		public GsonSerializer() {
-			super(OverAllState::new, new GsonBuilder().serializeNulls().create());
-		}
-
-		Gson getGson() {
-			return gson;
-		}
-
+	public StateGraph(String name, KeyStrategyFactory keyStrategyFactory, PlainTextStateSerializer stateSerializer) {
+		this.name = name;
+		this.keyStrategyFactory = keyStrategyFactory;
+		this.stateSerializer = stateSerializer;
 	}
 
-	static class GsonSerializer2 extends GsonStateSerializer {
-
-		public GsonSerializer2(AgentStateFactory<OverAllState> stateFactory) {
-			super(stateFactory, new GsonBuilder().serializeNulls().create());
-		}
-
-		Gson getGson() {
-			return gson;
-		}
-
+	public StateGraph(KeyStrategyFactory keyStrategyFactory, PlainTextStateSerializer stateSerializer) {
+		this.keyStrategyFactory = keyStrategyFactory;
+		this.stateSerializer = stateSerializer;
 	}
 
 	/**
-	 * Instantiates a new State graph.
-	 * @param overAllState the over all state
-	 * @param plainTextStateSerializer the plain text state serializer
+	 * Constructs a StateGraph with the given key strategy factory and name.
+	 * @param keyStrategyFactory the factory for providing key strategies
+	 * @param name the name of the graph
 	 */
-	public StateGraph(OverAllState overAllState, PlainTextStateSerializer plainTextStateSerializer) {
-		this.overAllState = overAllState;
+	public StateGraph(String name, KeyStrategyFactory keyStrategyFactory) {
+		this.keyStrategyFactory = keyStrategyFactory;
+		this.name = name;
+		this.stateSerializer = new JacksonSerializer();
+	}
+
+	/**
+	 * Constructs a StateGraph with the provided key strategy factory.
+	 * @param keyStrategyFactory the factory for providing key strategies
+	 */
+	public StateGraph(KeyStrategyFactory keyStrategyFactory) {
+		this.keyStrategyFactory = keyStrategyFactory;
+		this.stateSerializer = new JacksonSerializer();
+	}
+
+	/**
+	 * Deprecated constructor that initializes a StateGraph with the specified name,
+	 * overall state factory, and state serializer.
+	 * @param name the name of the graph
+	 * @param overAllStateFactory the factory for creating overall state instances
+	 * @param plainTextStateSerializer the plain text state serializer to use
+	 */
+	@Deprecated
+	public StateGraph(String name, OverAllStateFactory overAllStateFactory,
+			PlainTextStateSerializer plainTextStateSerializer) {
+		this.name = name;
+		this.overAllStateFactory = overAllStateFactory;
 		this.stateSerializer = plainTextStateSerializer;
 	}
 
-	public StateGraph(String name, OverAllState overAllState) {
-		this.name = name;
-		this.overAllState = overAllState;
-		this.stateSerializer = new GsonSerializer();
-	}
-
 	/**
-	 * Instantiates a new State graph.
-	 * @param overAllState the over all state
+	 * Deprecated constructor that initializes a StateGraph with the specified name and
+	 * overall state factory.
+	 * @param name the name of the graph
+	 * @param overAllStateFactory the factory for creating overall state instances
 	 */
-	public StateGraph(OverAllState overAllState) {
-		this.overAllState = overAllState;
-		this.stateSerializer = new GsonSerializer();
-	}
-
-	public StateGraph(String name, AgentStateFactory<OverAllState> factory) {
+	@Deprecated
+	public StateGraph(String name, OverAllStateFactory overAllStateFactory) {
 		this.name = name;
-		this.overAllState = factory.apply(Map.of());
-		this.stateSerializer = new GsonSerializer2(factory);
-	}
-
-	public StateGraph(AgentStateFactory<OverAllState> factory) {
-		this.overAllState = factory.apply(Map.of());
-		this.stateSerializer = new GsonSerializer2(factory);
+		this.overAllStateFactory = overAllStateFactory;
+		this.stateSerializer = new JacksonSerializer();
 	}
 
 	/**
-	 * Instantiates a new State graph.
+	 * Deprecated constructor that initializes a StateGraph with the provided overall
+	 * state factory.
+	 * @param overAllStateFactory the factory for creating overall state instances
+	 */
+	@Deprecated
+	public StateGraph(OverAllStateFactory overAllStateFactory) {
+		this.overAllStateFactory = overAllStateFactory;
+		this.stateSerializer = new JacksonSerializer();
+	}
+
+	/**
+	 * Deprecated constructor that initializes a StateGraph with the provided overall
+	 * state factory and state serializer.
+	 * @param overAllStateFactory the factory for creating overall state instances
+	 * @param plainTextStateSerializer the plain text state serializer to use
+	 */
+	@Deprecated
+	public StateGraph(OverAllStateFactory overAllStateFactory, PlainTextStateSerializer plainTextStateSerializer) {
+		this.overAllStateFactory = overAllStateFactory;
+		this.stateSerializer = plainTextStateSerializer;
+	}
+
+	/**
+	 * Default constructor that initializes a StateGraph with a Gson-based state
+	 * serializer.
 	 */
 	public StateGraph() {
-		this.stateSerializer = new GsonSerializer();
+		this.stateSerializer = new JacksonSerializer();
+		this.keyStrategyFactory = HashMap::new;
 	}
 
+	/**
+	 * Gets the name of the graph.
+	 * @return the name
+	 */
 	public String getName() {
 		return name;
 	}
 
 	/**
-	 * Key strategies map.
-	 * @return the map
-	 */
-	public Map<String, KeyStrategy> keyStrategies() {
-		return overAllState.keyStrategies();
-	}
-
-	/**
-	 * Gets state serializer.
+	 * Gets the state serializer used by this graph.
 	 * @return the state serializer
 	 */
-	public StateSerializer getStateSerializer() {
+	public StateSerializer<OverAllState> getStateSerializer() {
 		return stateSerializer;
 	}
 
 	/**
-	 * Gets state factory.
+	 * Gets the state factory associated with this graph's state serializer.
 	 * @return the state factory
 	 */
 	public final AgentStateFactory<OverAllState> getStateFactory() {
@@ -254,9 +244,42 @@ public class StateGraph {
 	}
 
 	/**
-	 * /** Adds a node to the graph.
+	 * Gets the overall state factory.
+	 * @return the overall state factory
+	 */
+	@Deprecated
+	public final OverAllStateFactory getOverAllStateFactory() {
+		return overAllStateFactory;
+	}
+
+	/**
+	 * Gets the key strategy factory.
+	 * @return the key strategy factory
+	 */
+	public final KeyStrategyFactory getKeyStrategyFactory() {
+		return keyStrategyFactory;
+	}
+
+	/**
+	 * Adds a commandNode to the graph.
 	 * @param id the identifier of the node
-	 * @param action the action to be performed by the node
+	 * @param action AsyncCommandAction action
+	 * @param mappings the mappings to be used for conditional edges
+	 * @return this state graph instance
+	 * @throws GraphStateException if the node identifier is invalid or the node already
+	 * exists
+	 */
+	public StateGraph addNode(String id, AsyncCommandAction action, Map<String, String> mappings)
+			throws GraphStateException {
+
+		return addNode(id, new CommandNode(id, action, mappings));
+	}
+
+	/**
+	 * Adds a node to the graph.
+	 * @param id the identifier of the node
+	 * @param action the asynchronous node action to be performed by the node
+	 * @return this state graph instance
 	 * @throws GraphStateException if the node identifier is invalid or the node already
 	 * exists
 	 */
@@ -265,9 +288,10 @@ public class StateGraph {
 	}
 
 	/**
+	 * Adds a node to the graph with the specified action and configuration.
 	 * @param id the identifier of the node
 	 * @param actionWithConfig the action to be performed by the node
-	 * @return this
+	 * @return this state graph instance
 	 * @throws GraphStateException if the node identifier is invalid or the node already
 	 * exists
 	 */
@@ -277,9 +301,10 @@ public class StateGraph {
 	}
 
 	/**
+	 * Adds a node to the graph with the specified identifier and node instance.
 	 * @param id the identifier of the node
 	 * @param node the node to be added
-	 * @return this
+	 * @return this state graph instance
 	 * @throws GraphStateException if the node identifier is invalid or the node already
 	 * exists
 	 */
@@ -301,7 +326,8 @@ public class StateGraph {
 
 	/**
 	 * Adds a subgraph to the state graph by creating a node with the specified
-	 * identifier. This implies that Subgraph share the same state with parent graph
+	 * identifier. This implies that the subgraph shares the same state with the parent
+	 * graph.
 	 * @param id the identifier of the node representing the subgraph
 	 * @param subGraph the compiled subgraph to be added
 	 * @return this state graph instance
@@ -321,15 +347,15 @@ public class StateGraph {
 
 		nodes.elements.add(node);
 		return this;
-
 	}
 
 	/**
 	 * Adds a subgraph to the state graph by creating a node with the specified
-	 * identifier. This implies that Subgraph share the same state with parent graph
+	 * identifier. This implies that the subgraph will share the same state with the
+	 * parent graph and will be compiled when the parent is compiled.
 	 * @param id the identifier of the node representing the subgraph
-	 * @param subGraph the subgraph to be added. it will be compiled on compilation of the
-	 * parent
+	 * @param subGraph the subgraph to be added; it will be compiled during compilation of
+	 * the parent
 	 * @return this state graph instance
 	 * @throws GraphStateException if the node identifier is invalid or the node already
 	 * exists
@@ -340,17 +366,6 @@ public class StateGraph {
 		}
 
 		subGraph.validateGraph();
-		OverAllState subGraphOverAllState = subGraph.getOverAllState();
-		OverAllState superOverAllState = getOverAllState();
-		if (subGraphOverAllState != null) {
-			Map<String, KeyStrategy> strategies = subGraphOverAllState.keyStrategies();
-			for (Map.Entry<String, KeyStrategy> strategyEntry : strategies.entrySet()) {
-				if (!superOverAllState.containStrategy(strategyEntry.getKey())) {
-					superOverAllState.registerKeyAndStrategy(strategyEntry.getKey(), strategyEntry.getValue());
-				}
-			}
-		}
-		subGraph.setOverAllState(getOverAllState());
 
 		var node = new SubStateGraphNode(id, subGraph);
 
@@ -363,9 +378,10 @@ public class StateGraph {
 	}
 
 	/**
-	 * Adds an edge to the graph.
+	 * Adds an edge to the graph between the specified source and target nodes.
 	 * @param sourceId the identifier of the source node
 	 * @param targetId the identifier of the target node
+	 * @return this state graph instance
 	 * @throws GraphStateException if the edge identifier is invalid or the edge already
 	 * exists
 	 */
@@ -373,11 +389,6 @@ public class StateGraph {
 		if (Objects.equals(sourceId, END)) {
 			throw Errors.invalidEdgeIdentifier.exception(END);
 		}
-
-		// if (Objects.equals(sourceId, START)) {
-		// this.entryPoint = new EdgeValue<>(targetId);
-		// return this;
-		// }
 
 		var newEdge = new Edge(sourceId, new EdgeValue(targetId));
 
@@ -395,14 +406,15 @@ public class StateGraph {
 	}
 
 	/**
-	 * Adds conditional edges to the graph.
+	 * Adds conditional edges to the graph based on the provided condition and mappings.
 	 * @param sourceId the identifier of the source node
-	 * @param condition the condition to determine the target node
+	 * @param condition the command action used to determine the target node
 	 * @param mappings the mappings of conditions to target nodes
+	 * @return this state graph instance
 	 * @throws GraphStateException if the edge identifier is invalid, the mappings are
 	 * empty, or the edge already exists
 	 */
-	public StateGraph addConditionalEdges(String sourceId, AsyncEdgeAction condition, Map<String, String> mappings)
+	public StateGraph addConditionalEdges(String sourceId, AsyncCommandAction condition, Map<String, String> mappings)
 			throws GraphStateException {
 		if (Objects.equals(sourceId, END)) {
 			throw Errors.invalidEdgeIdentifier.exception(END);
@@ -422,19 +434,52 @@ public class StateGraph {
 		return this;
 	}
 
+	/**
+	 * Adds conditional edges to the graph based on the provided edge action condition and
+	 * mappings.
+	 * @param sourceId the identifier of the source node
+	 * @param condition the edge action used to determine the target node
+	 * @param mappings the mappings of conditions to target nodes
+	 * @return this state graph instance
+	 * @throws GraphStateException if the edge identifier is invalid, the mappings are
+	 * empty, or the edge already exists
+	 */
+	public StateGraph addConditionalEdges(String sourceId, AsyncEdgeAction condition, Map<String, String> mappings)
+			throws GraphStateException {
+		return addConditionalEdges(sourceId, AsyncCommandAction.of(condition), mappings);
+	}
+
+	/**
+	 * Validates the structure of the graph ensuring all connections are valid.
+	 * @throws GraphStateException if there are errors related to the graph state
+	 */
 	void validateGraph() throws GraphStateException {
 		var edgeStart = edges.edgeBySourceId(START).orElseThrow(Errors.missingEntryPoint::exception);
 
 		edgeStart.validate(nodes);
 
+		validateNode(nodes);
+
 		for (Edge edge : edges.elements) {
 			edge.validate(nodes);
 		}
+	}
 
+	private void validateNode(Nodes nodes) throws GraphStateException {
+		List<CommandNode> commandNodeList = nodes.elements.stream().filter(node -> {
+			return node instanceof CommandNode commandNode;
+		}).map(node -> (CommandNode) node).toList();
+		for (CommandNode commandNode : commandNodeList) {
+			for (String key : commandNode.getMappings().keySet()) {
+				if (!nodes.anyMatchById(key)) {
+					throw Errors.missingNodeInEdgeMapping.exception(commandNode.id(), key);
+				}
+			}
+		}
 	}
 
 	/**
-	 * Compiles the state graph into a compiled graph.
+	 * Compiles the state graph into a compiled graph using the provided configuration.
 	 * @param config the compile configuration
 	 * @return a compiled graph
 	 * @throws GraphStateException if there are errors related to the graph state
@@ -448,68 +493,92 @@ public class StateGraph {
 	}
 
 	/**
-	 * Compiles the state graph into a compiled graph.
+	 * Compiles the state graph into a compiled graph using a default configuration with
+	 * memory saver.
 	 * @return a compiled graph
 	 * @throws GraphStateException if there are errors related to the graph state
 	 */
 	public CompiledGraph compile() throws GraphStateException {
 		SaverConfig saverConfig = SaverConfig.builder().register(SaverConstant.MEMORY, new MemorySaver()).build();
-		return compile(CompileConfig.builder()
-			.plainTextStateSerializer(new JacksonSerializer())
-			.saverConfig(saverConfig)
-			.build());
+		return compile(CompileConfig.builder().saverConfig(saverConfig).build());
 	}
 
 	/**
 	 * Generates a drawable graph representation of the state graph.
 	 * @param type the type of graph representation to generate
 	 * @param title the title of the graph
-	 * @param printConditionalEdges whether to print conditional edges
+	 * @param printConditionalEdges whether to include conditional edges in the output
 	 * @return a diagram code of the state graph
 	 */
 	public GraphRepresentation getGraph(GraphRepresentation.Type type, String title, boolean printConditionalEdges) {
-
 		String content = type.generator.generate(nodes, edges, title, printConditionalEdges);
 
 		return new GraphRepresentation(type, content);
 	}
 
 	/**
-	 * Generates a drawable graph representation of the state graph.
+	 * Generates a drawable graph representation of the state graph with conditional edges
+	 * included.
 	 * @param type the type of graph representation to generate
 	 * @param title the title of the graph
 	 * @return a diagram code of the state graph
 	 */
 	public GraphRepresentation getGraph(GraphRepresentation.Type type, String title) {
-
 		String content = type.generator.generate(nodes, edges, title, true);
 
 		return new GraphRepresentation(type, content);
 	}
 
+	/**
+	 * Generates a drawable graph representation of the state graph using the graph's name
+	 * as title.
+	 * @param type the type of graph representation to generate
+	 * @return a diagram code of the state graph
+	 */
 	public GraphRepresentation getGraph(GraphRepresentation.Type type) {
-
 		String content = type.generator.generate(nodes, edges, name, true);
 
 		return new GraphRepresentation(type, content);
 	}
 
+	/**
+	 * Container for nodes in the graph.
+	 */
 	public static class Nodes {
 
+		/**
+		 * The collection of nodes.
+		 */
 		public final Set<Node> elements;
 
+		/**
+		 * Instantiates a new Nodes container with the provided elements.
+		 * @param elements the elements to initialize
+		 */
 		public Nodes(Collection<Node> elements) {
 			this.elements = new LinkedHashSet<>(elements);
 		}
 
+		/**
+		 * Instantiates a new empty Nodes container.
+		 */
 		public Nodes() {
 			this.elements = new LinkedHashSet<>();
 		}
 
+		/**
+		 * Checks if any node matches the given identifier.
+		 * @param id the identifier to match
+		 * @return true if a matching node is found, false otherwise
+		 */
 		public boolean anyMatchById(String id) {
 			return elements.stream().anyMatch(n -> Objects.equals(n.id(), id));
 		}
 
+		/**
+		 * Returns a list of sub-state graph nodes.
+		 * @return a list of sub-state graph nodes
+		 */
 		public List<SubStateGraphNode> onlySubStateGraphNodes() {
 			return elements.stream()
 				.filter(n -> n instanceof SubStateGraphNode)
@@ -517,28 +586,55 @@ public class StateGraph {
 				.toList();
 		}
 
+		/**
+		 * Returns a list of nodes excluding sub-state graph nodes.
+		 * @return a list of nodes excluding sub-state graph nodes
+		 */
 		public List<Node> exceptSubStateGraphNodes() {
 			return elements.stream().filter(n -> !(n instanceof SubStateGraphNode)).toList();
 		}
 
 	}
 
+	/**
+	 * Container for edges in the graph.
+	 */
 	public static class Edges {
 
+		/**
+		 * The collection of edges.
+		 */
 		public final List<Edge> elements;
 
+		/**
+		 * Instantiates a new Edges container with the provided elements.
+		 * @param elements the elements to initialize
+		 */
 		public Edges(Collection<Edge> elements) {
 			this.elements = new LinkedList<>(elements);
 		}
 
+		/**
+		 * Instantiates a new empty Edges container.
+		 */
 		public Edges() {
 			this.elements = new LinkedList<>();
 		}
 
+		/**
+		 * Retrieves the first edge matching the specified source identifier.
+		 * @param sourceId the source identifier to match
+		 * @return an optional containing the matched edge, or empty if none found
+		 */
 		public Optional<Edge> edgeBySourceId(String sourceId) {
 			return elements.stream().filter(e -> Objects.equals(e.sourceId(), sourceId)).findFirst();
 		}
 
+		/**
+		 * Retrieves a list of edges targeting the specified node identifier.
+		 * @param targetId the target identifier to match
+		 * @return a list of edges targeting the specified identifier
+		 */
 		public List<Edge> edgesByTargetId(String targetId) {
 			return elements.stream().filter(e -> e.anyMatchByTargetId(targetId)).toList();
 		}

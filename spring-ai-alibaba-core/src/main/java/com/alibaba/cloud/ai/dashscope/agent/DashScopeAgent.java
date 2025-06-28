@@ -21,6 +21,7 @@ import com.alibaba.cloud.ai.dashscope.api.DashScopeAgentApi.DashScopeAgentReques
 import com.alibaba.cloud.ai.dashscope.api.DashScopeAgentApi.DashScopeAgentResponse;
 import com.alibaba.cloud.ai.dashscope.api.DashScopeAgentApi.DashScopeAgentRequest.DashScopeAgentRequestInput.DashScopeAgentRequestMessage;
 import com.alibaba.cloud.ai.dashscope.api.DashScopeAgentApi.DashScopeAgentRequest.DashScopeAgentRequestParameters.DashScopeAgentRequestRagOptions;
+import com.alibaba.cloud.ai.dashscope.common.DashScopeApiConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -51,12 +52,6 @@ import java.util.Map;
 public final class DashScopeAgent extends Agent {
 
 	private static final Logger logger = LoggerFactory.getLogger(DashScopeAgent.class);
-
-	public static final String REQUEST_ID = "request_id";
-
-	public static final String USAGE = "usage";
-
-	public static final String OUTPUT = "output";
 
 	private final DashScopeAgentOptions options;
 
@@ -157,9 +152,9 @@ public final class DashScopeAgent extends Agent {
 		}
 
 		Map<String, Object> metadata = new HashMap<>();
-		metadata.put(REQUEST_ID, response.requestId());
-		metadata.put(USAGE, usage);
-		metadata.put(OUTPUT, output);
+		metadata.put(DashScopeApiConstants.REQUEST_ID, response.requestId());
+		metadata.put(DashScopeApiConstants.USAGE, usage);
+		metadata.put(DashScopeApiConstants.OUTPUT, output);
 
 		var assistantMessage = new AssistantMessage(text, metadata);
 		var generationMetadata = ChatGenerationMetadata.builder().finishReason(output.finishReason()).build();

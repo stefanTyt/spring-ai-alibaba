@@ -24,7 +24,10 @@ import com.alibaba.cloud.ai.service.dsl.AbstractNodeDataConverter;
 import com.alibaba.cloud.ai.service.dsl.DSLDialectType;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -75,7 +78,12 @@ public class BranchNodeDataConverter extends AbstractNodeDataConverter<BranchNod
 							.setConditions(conditions));
 					}
 				}
-				return new BranchNodeData(List.of(), List.of()).setCases(cases);
+
+				// outputKey
+				String nodeId = (String) data.get("id");
+				String outputKey = (String) data.getOrDefault("output_key", BranchNodeData.defaultOutputKey(nodeId));
+
+				return new BranchNodeData(List.of(), List.of()).setCases(cases).setOutputKey(outputKey);
 			}
 
 			@Override

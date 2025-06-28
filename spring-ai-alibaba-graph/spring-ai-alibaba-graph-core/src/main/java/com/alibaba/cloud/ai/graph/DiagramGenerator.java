@@ -15,82 +15,21 @@
  */
 package com.alibaba.cloud.ai.graph;
 
-import com.alibaba.cloud.ai.graph.internal.edge.EdgeCondition;
-
-import java.util.Objects;
-
 import static com.alibaba.cloud.ai.graph.StateGraph.START;
 import static java.lang.String.format;
+import static java.util.Optional.ofNullable;
+
+import com.alibaba.cloud.ai.graph.internal.edge.EdgeCondition;
+import com.alibaba.cloud.ai.graph.internal.node.CommandNode;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Abstract class for diagram generation. This class provides a framework for generating
  * textual representations of graphs.
  */
 public abstract class DiagramGenerator {
-
-	public enum CallStyle {
-
-		DEFAULT, START, END, CONDITIONAL, PARALLEL
-
-	}
-
-	public record Context(StringBuilder sb, String title, boolean printConditionalEdge, boolean isSubGraph) {
-
-		static Builder builder() {
-			return new Builder();
-		}
-
-		static public class Builder {
-
-			String title;
-
-			boolean printConditionalEdge;
-
-			boolean IsSubGraph;
-
-			private Builder() {
-			}
-
-			public Builder title(String title) {
-				this.title = title;
-				return this;
-			}
-
-			public Builder printConditionalEdge(boolean value) {
-				this.printConditionalEdge = value;
-				return this;
-			}
-
-			public Builder isSubGraph(boolean value) {
-				this.IsSubGraph = value;
-				return this;
-			}
-
-			public Context build() {
-				return new Context(new StringBuilder(), title, printConditionalEdge, IsSubGraph);
-			}
-
-		}
-
-		/**
-		 * Converts a given title string to snake_case format by replacing all
-		 * non-alphanumeric characters with underscores.
-		 * @return the snake_case formatted string
-		 */
-		public String titleToSnakeCase() {
-			return title.replaceAll("[^a-zA-Z0-9]", "_");
-		}
-
-		/**
-		 * Returns a string representation of this object by returning the string built in
-		 * {@link #sb}.
-		 * @return a string representation of this object.
-		 */
-		@Override
-		public String toString() {
-			return sb.toString();
-		}
-	}
 
 	/**
 	 * Appends a header to the output based on the provided context.
@@ -128,9 +67,10 @@ public abstract class DiagramGenerator {
 	/**
 	 * Declares a conditional element in the configuration or template. This method is
 	 * used to mark the start of a conditional section based on the provided {@code name}.
-	 * It takes a {@code Context} object that may contain additional parameters necessary
-	 * for the declaration, and a {@code name} which identifies the type or key associated
-	 * with the conditional section.
+	 * It takes a {@code
+	 * Context} object that may contain additional parameters necessary for the
+	 * declaration, and a {@code name} which identifies the type or key associated with
+	 * the conditional section.
 	 * @param ctx The context containing contextual information needed for the
 	 * declaration.
 	 * @param name The name of the conditional section to be declared.
@@ -156,7 +96,8 @@ public abstract class DiagramGenerator {
 	 * Comment a line in the given context.
 	 * @param ctx The context in which the line is to be commented.
 	 * @param yesOrNo Whether the line should be uncommented ({@literal true}) or
-	 * commented ({@literal false}).
+	 * commented ({@literal
+	 *     false}).
 	 */
 	protected abstract void commentLine(Context ctx, boolean yesOrNo);
 
@@ -176,7 +117,6 @@ public abstract class DiagramGenerator {
 		return generate(nodes, edges,
 				Context.builder().title(title).isSubGraph(false).printConditionalEdge(printConditionalEdge).build())
 			.toString();
-
 	}
 
 	/**
@@ -197,7 +137,7 @@ public abstract class DiagramGenerator {
 			if (n instanceof SubGraphNode subGraphNode) {
 
 				@SuppressWarnings("unchecked")
-				var subGraph = (StateGraph) subGraphNode.subGraph();
+				var subGraph = subGraphNode.subGraph();
 				Context subgraphCtx = generate(subGraph.nodes, subGraph.edges,
 						Context.builder()
 							.title(n.id())
@@ -208,6 +148,11 @@ public abstract class DiagramGenerator {
 			}
 			else {
 				declareNode(ctx, n.id());
+			}
+		}
+		for (var n : nodes.elements) {
+			if (n instanceof CommandNode commandNode) {
+				handleCommandNode(ctx, commandNode);
 			}
 		}
 
@@ -246,7 +191,6 @@ public abstract class DiagramGenerator {
 		conditionalEdgeCount[0] = 0; // reset
 
 		edges.elements.stream().filter(e -> !Objects.equals(e.sourceId(), START)).forEach(v -> {
-
 			if (v.isParallel()) {
 				v.targets().forEach(target -> {
 					call(ctx, v.sourceId(), target.id(), CallStyle.PARALLEL);
@@ -266,7 +210,30 @@ public abstract class DiagramGenerator {
 		appendFooter(ctx);
 
 		return ctx;
+	}
 
+	private void handleCommandNode(Context ctx, CommandNode commandNode) {
+		Map<String, String> mappings = commandNode.getMappings();
+		commentLine(ctx, !ctx.printConditionalEdge());
+
+		mappings.forEach((cond, to) -> {
+			var skipCond = Objects.equals(cond, to);
+
+			commentLine(ctx, !ctx.printConditionalEdge());
+			if (skipCond) {
+				call(ctx, commandNode.id(), to, CallStyle.CONDITIONAL);
+			}
+			else {
+				call(ctx, commandNode.id(), to, cond, CallStyle.CONDITIONAL);
+			}
+			commentLine(ctx, ctx.printConditionalEdge());
+			if (skipCond) {
+				call(ctx, commandNode.id(), to, CallStyle.CONDITIONAL);
+			}
+			else {
+				call(ctx, commandNode.id(), to, cond, CallStyle.CONDITIONAL);
+			}
+		});
 	}
 
 	/**
@@ -281,11 +248,87 @@ public abstract class DiagramGenerator {
 		call(ctx, k, conditionName, CallStyle.CONDITIONAL);
 
 		condition.mappings().forEach((cond, to) -> {
+			var skipCond = Objects.equals(cond, to);
+
 			commentLine(ctx, !ctx.printConditionalEdge());
-			call(ctx, conditionName, to, cond, CallStyle.CONDITIONAL);
+			if (skipCond) {
+				call(ctx, conditionName, to, CallStyle.CONDITIONAL);
+			}
+			else {
+				call(ctx, conditionName, to, cond, CallStyle.CONDITIONAL);
+			}
 			commentLine(ctx, ctx.printConditionalEdge());
-			call(ctx, k, to, cond, CallStyle.CONDITIONAL);
+			if (skipCond) {
+				call(ctx, k, to, CallStyle.CONDITIONAL);
+			}
+			else {
+				call(ctx, k, to, cond, CallStyle.CONDITIONAL);
+			}
 		});
+	}
+
+	public enum CallStyle {
+
+		DEFAULT, START, END, CONDITIONAL, PARALLEL
+
+	}
+
+	public record Context(StringBuilder sb, String title, boolean printConditionalEdge, boolean isSubGraph) {
+
+		static Builder builder() {
+			return new Builder();
+		}
+
+		/**
+		 * Converts a given title string to snake_case format by replacing all
+		 * non-alphanumeric characters with underscores.
+		 * @return the snake_case formatted string
+		 */
+		public Optional<String> titleToSnakeCase() {
+			return ofNullable(title).map(v -> v.replaceAll("[^a-zA-Z0-9]", "_"));
+		}
+
+		/**
+		 * Returns a string representation of this object by returning the string built in
+		 * {@link #sb}.
+		 * @return a string representation of this object.
+		 */
+		@Override
+		public String toString() {
+			return sb.toString();
+		}
+
+		public static class Builder {
+
+			String title;
+
+			boolean printConditionalEdge;
+
+			boolean IsSubGraph;
+
+			private Builder() {
+			}
+
+			public Builder title(String title) {
+				this.title = title;
+				return this;
+			}
+
+			public Builder printConditionalEdge(boolean value) {
+				this.printConditionalEdge = value;
+				return this;
+			}
+
+			public Builder isSubGraph(boolean value) {
+				this.IsSubGraph = value;
+				return this;
+			}
+
+			public Context build() {
+				return new Context(new StringBuilder(), title, printConditionalEdge, IsSubGraph);
+			}
+
+		}
 	}
 
 }

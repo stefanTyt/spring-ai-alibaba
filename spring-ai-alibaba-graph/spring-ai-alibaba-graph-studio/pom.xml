@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.alibaba.cloud.ai</groupId>
@@ -12,12 +10,11 @@
 
     <artifactId>spring-ai-alibaba-graph-studio</artifactId>
     <name>Spring AI Graph Studio</name>
+
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <springdoc-openapi-maven-plugin.version>1.4
-        </springdoc-openapi-maven-plugin.version>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <spring-initializr.version>0.21.0</spring-initializr.version>
+        <org.eclipse.jdt.core.version>3.42.0</org.eclipse.jdt.core.version>
     </properties>
 
     <dependencies>
@@ -25,12 +22,18 @@
         <dependency>
             <groupId>com.alibaba.cloud.ai</groupId>
             <artifactId>spring-ai-alibaba-graph-core</artifactId>
-            <version>${parent.version}</version>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>com.alibaba.cloud.ai</groupId>
-            <artifactId>spring-ai-alibaba-autoconfigure</artifactId>
+            <artifactId>spring-ai-alibaba-autoconfigure-dashscope</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
 
@@ -63,6 +66,31 @@
             <version>${springdoc-openapi.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>io.spring.initializr</groupId>
+            <artifactId>initializr-generator-spring</artifactId>
+            <version>${spring-initializr.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.spring.initializr</groupId>
+            <artifactId>initializr-generator</artifactId>
+            <version>${spring-initializr.version}</version>
+        </dependency>
+
+        <!-- org.eclipse.jdt.core for format -->
+        <dependency>
+            <groupId>org.eclipse.jdt</groupId>
+            <artifactId>org.eclipse.jdt.core</artifactId>
+            <version>3.42.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.spring.initializr</groupId>
+            <artifactId>initializr-web</artifactId>
+            <version>${spring-initializr.version}</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -71,21 +99,22 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-maven-plugin</artifactId>
                 <version>${springdoc-openapi-maven-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                    </execution>
-                </executions>
                 <configuration>
                     <apiDocsUrl>http://localhost:8080/v3/api-docs.yaml</apiDocsUrl>
                     <outputFileName>openapi.yaml</outputFileName>
                     <outputDir>${project.basedir}/src/main/resources</outputDir>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <phase>compile</phase>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
+
 </project>

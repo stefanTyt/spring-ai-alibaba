@@ -15,6 +15,9 @@
 ##@ Tools
 
 .PHONY: tools
+
+MVND_VERSION := 2.0.0-rc-3
+
 tools: ## Install ci tools
 
 	@$(LOG_TARGET)
@@ -34,3 +37,24 @@ tools: ## Install ci tools
 
 	@echo "Installing yamllint"
 	pip install yamllint==1.35.1
+
+	@echo "Installing yamlfmt"
+	go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+
+	@echo "Installing gitleaks"
+	mkdir -p tools/bin && \
+	cd tools/bin && \
+	git clone https://github.com/gitleaks/gitleaks && \
+	cd gitleaks && \
+	make build && \
+	chmod +x gitleaks && \
+	cp gitleaks /usr/local/bin && \
+	cd .. && rm -rf gitleaks
+
+	@echo "Installing mvnd"
+	curl -sL https://dlcdn.apache.org/maven/mvnd/$(MVND_VERSION)/maven-mvnd-$(MVND_VERSION)-linux-amd64.zip -o mvnd.zip && \
+	unzip -q mvnd.zip && \
+	mkdir -p ${HOME}/.local && \
+	mv maven-mvnd-$(MVND_VERSION)-linux-amd64 ${HOME}/.local/mvnd && \
+	echo "${HOME}/.local/mvnd/bin" >> ${GITHUB_PATH} && \
+	echo "MVND_HOME=${HOME}/.local/mvnd" >> ${GITHUB_ENV}

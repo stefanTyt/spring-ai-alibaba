@@ -18,11 +18,9 @@ package com.alibaba.cloud.ai.reader.gptrepo;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
-import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
@@ -199,7 +197,7 @@ public class GptRepoDocumentReader implements DocumentReader {
 
 				// Check file extension
 				if (extensions != null && !extensions.isEmpty()) {
-					String ext = com.google.common.io.Files.getFileExtension(file.toString());
+					String ext = getFileExtension(file.toString());
 					if (!extensions.contains(ext)) {
 						return FileVisitResult.CONTINUE;
 					}
@@ -225,6 +223,12 @@ public class GptRepoDocumentReader implements DocumentReader {
 		}
 
 		return results;
+	}
+
+	private String getFileExtension(String fullName) {
+		String fileName = (new File(fullName)).getName();
+		int dotIndex = fileName.lastIndexOf(46);
+		return dotIndex == -1 ? "" : fileName.substring(dotIndex + 1);
 	}
 
 	/**

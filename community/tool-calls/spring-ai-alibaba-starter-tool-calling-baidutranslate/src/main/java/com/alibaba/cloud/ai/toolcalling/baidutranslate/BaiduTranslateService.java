@@ -53,8 +53,6 @@ public class BaiduTranslateService implements Function<BaiduTranslateService.Req
 	public BaiduTranslateService(BaiduTranslateProperties properties, RestClientTool restClientTool,
 			JsonParseTool jsonParseTool) {
 
-		assert StringUtils.hasText(properties.getAppId());
-		assert StringUtils.hasText(properties.getSecretKey());
 		this.restClientTool = restClientTool;
 		this.jsonParseTool = jsonParseTool;
 		this.properties = properties;
@@ -66,6 +64,9 @@ public class BaiduTranslateService implements Function<BaiduTranslateService.Req
 		if (request == null || !StringUtils.hasText(request.q) || !StringUtils.hasText(request.from)
 				|| !StringUtils.hasText(request.to)) {
 			return null;
+		}
+		if (!StringUtils.hasText(properties.getAppId()) || !StringUtils.hasText(properties.getSecretKey())) {
+			throw new RuntimeException("AppId and SecretKey is empty. Please check your configuration.");
 		}
 
 		String salt = String.valueOf(random.nextInt(100000));
